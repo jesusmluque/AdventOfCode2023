@@ -2,53 +2,56 @@ import scala.annotation.tailrec
 
 object AlmanacSeed {
 
-  def getLowestLocationWhenSeedsAreRanges2(rawAlmanac: List[String]) = {
+  def getLowestLocationWhenSeedsAreRanges(rawAlmanac: List[String]) = {
     def mapRanges(range: List[Long], ranges: List[List[Long]], mapping: List[List[Long]]): List[List[Long]] = {
       val minValue = range.head
-      val maxValue = range.head + range(1)
+      val offsetValue = range(1)
+      val maxValue = range.head + offsetValue
       if (ranges.isEmpty)
         range :: mapping
-      else if (minValue >= ranges.head(1) && maxValue <= ranges.head(1) + ranges.head(2))
-        List(minValue - ranges.head(1) + ranges.head.head, maxValue - ranges.head(1) + ranges.head.head) :: mapping
-      else if (minValue >= ranges.head(1) && minValue <= (ranges.head(1) + ranges.head(2)) && maxValue > ranges.head(1) + ranges.head(2))
-        mapRanges(List(ranges.head(1) + ranges.head(2), maxValue), ranges.tail, List(minValue - ranges.head(1) + ranges.head.head, ranges.head(1) + ranges.head.head) :: mapping)
-      else if (minValue < ranges.head(1) && maxValue >= ranges.head(1) && maxValue <= ranges.head(1) + ranges.head(2))
-        mapRanges(List(minValue, ranges.head(1)), ranges.tail, List(ranges.head.head, ranges.head.head + range(1) - ranges.head(1) + minValue) :: mapping)
-      else if (minValue < ranges.head(1) && maxValue > ranges.head(1) + ranges.head(2))
-        val mappingInt = mapRanges(List(minValue, ranges.head(1)), ranges.tail, List(ranges.head.head, ranges.head.head + ranges.head(2)) :: mapping)
-        mapRanges(List(ranges.head(1) + ranges.head(2), maxValue), ranges.tail, mappingInt)
       else
-        mapRanges(range, ranges.tail, mapping)
+        val mappingOffset = ranges.head(2)
+        val minToCompare = ranges.head(1)
+        val maxToCompare = ranges.head(1) + mappingOffset
+        val minMapping = ranges.head.head
+        val maxMapping = minMapping + mappingOffset
+
+        if (minValue >= minToCompare && maxValue <= maxToCompare)
+          List(minValue - minToCompare + minMapping, offsetValue) :: mapping
+        else if (minValue >= minToCompare && minValue <= maxToCompare && maxValue >= maxToCompare)
+          mapRanges(List(maxToCompare, maxValue - maxToCompare), ranges.tail, List(minValue - minToCompare + minMapping, mappingOffset - minValue + minToCompare) :: mapping)
+        else if (minValue <= minToCompare && maxValue >= minToCompare && maxValue <= maxToCompare)
+          mapRanges(List(minValue, minToCompare - minValue), ranges.tail, List(minMapping, maxValue - minToCompare) :: mapping)
+        else if (minValue <= minToCompare && maxValue >= maxToCompare)
+          val mappingInt = mapRanges(List(minValue, minToCompare - minValue), ranges.tail, List(minMapping, mappingOffset) :: mapping)
+          mapRanges(List(maxToCompare, maxValue - maxToCompare), ranges.tail, mappingInt)
+        else
+          mapRanges(range, ranges.tail, mapping)
     }
     val rawParts = parseAlmanac(rawAlmanac)
     val seedsRanges = rawParts("seed").head.grouped(2).toList
     seedsRanges.flatMap { pair =>
-      val soil = mapRanges(pair, rawParts("soil"), List())
-      val fertilizer = soil.flatMap(mapRanges(_, rawParts("fertilizer"), List()))
-      val water = fertilizer.flatMap(mapRanges(_, rawParts("water"), List()))
-      val light = water.flatMap(mapRanges(_, rawParts("light"), List()))
-      val temperature = light.flatMap(mapRanges(_, rawParts("temperature"), List()))
-      val humidity = temperature.flatMap(mapRanges(_, rawParts("humidity"), List()))
-      val location = humidity.flatMap(mapRanges(_, rawParts("location"), List()))
-      location
+      mapRanges(pair, rawParts("soil"), List())
+        .flatMap(mapRanges(_, rawParts("fertilizer"), List()))
+        .flatMap(mapRanges(_, rawParts("water"), List()))
+        .flatMap(mapRanges(_, rawParts("light"), List()))
+        .flatMap(mapRanges(_, rawParts("temperature"), List()))
+        .flatMap(mapRanges(_, rawParts("humidity"), List()))
+        .flatMap(mapRanges(_, rawParts("location"), List()))
     }.minBy(_.head).head
   }
-  def getLowestLocationWhenSeedsAreRanges(rawAlmanac: List[String]):Long = {
-    val rawParts = parseAlmanac(rawAlmanac)
-    val seedsRanges = rawParts("seed").head.grouped(2).toList
-    seedsRanges.flatMap { pair =>
-      (pair.head to pair.head + pair(1)).map{ seed =>
-        val soil = mapValues(seed, rawParts("soil"))
-        val fertilizer = mapValues(soil, rawParts("fertilizer"))
-        val water = mapValues(fertilizer, rawParts("water"))
-        val light = mapValues(water, rawParts("light"))
-        val temperature = mapValues(light, rawParts("temperature"))
-        val humidity = mapValues(temperature, rawParts("humidity"))
-        mapValues(humidity, rawParts("location"))
-      }
-    }.min
-  }
   def getLowestLocation(rawAlmanac: List[String]) = {
+    @tailrec
+    def mapValues(value: Long, ranges: List[List[Long]]): Long = {
+      if (ranges.isEmpty)
+        value
+      else
+        val range = ranges.head
+        if (value >= range(1) && value < range(1) + range(2))
+          value - range(1) + range.head
+        else
+          mapValues(value, ranges.tail)
+    }
     val rawParts = parseAlmanac(rawAlmanac)
     val seeds = rawParts("seed").head
     seeds.map { seed =>
@@ -60,17 +63,6 @@ object AlmanacSeed {
       val humidity = mapValues(temperature, rawParts("humidity"))
       mapValues(humidity, rawParts("location"))
     }.min
-  }
-  @tailrec
-  private def mapValues(value: Long, ranges: List[List[Long]]):Long = {
-    if (ranges.isEmpty)
-      value
-    else
-      val range = ranges.head
-      if ( value >= range(1) && value < range(1) + range(2))
-        value - range(1) + range.head
-      else
-        mapValues(value, ranges.tail)
   }
   private def parseAlmanac(rawAlmanac: List[String]) = {
     def parseNumbersLine(nums: String) = nums.split(" ").map(_.toLong).toList

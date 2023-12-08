@@ -15,7 +15,7 @@ class AlmanacSeedTest extends AnyFlatSpec {
     assert(AlmanacSeed.getLowestLocationWhenSeedsAreRanges(Source.fromResource("almanac1").getLines().toList) == 46L)
   }
 
-  "The lowest location of all seeds for the almanac2 file taking into consideration that the seeds are ranges also " should " be 46 " in {
-    assert(AlmanacSeed.getLowestLocationWhenSeedsAreRanges(Source.fromResource("almanac2").getLines().toList) == 46L)
+  "The lowest location of all seeds for the almanac2 file taking into consideration that the seeds are ranges also " should " be 57451709 " in {
+    assert(AlmanacSeed.getLowestLocationWhenSeedsAreRanges(Source.fromResource("almanac2").getLines().toList) == 57451709L)
   }
 }
