@@ -13,7 +13,7 @@ object CosmicExpansion {
 
     def expandUniverseInOneDimension(stars: List[((Long,Long), (Long,Long))]) = {
       val emptyRowsV = (0L until universeRaw.size.toLong).toSet.diff(stars.map(_._1._1).toSet)
-      val starsExpandedVertically = emptyRowsV.foldLeft(stars) { (acc, emptyRow) =>
+      emptyRowsV.foldLeft(stars) { (acc, emptyRow) =>
         acc.map { star =>
           if (star._1._1 > emptyRow)
             (star._1, (star._2._1 + expansionFactor - 1L, star._2._2))
@@ -21,16 +21,16 @@ object CosmicExpansion {
             star
         }
       }
-      starsExpandedVertically
     }
+
+    def rotateUniverse(stars: List[((Long,Long),(Long,Long))]) = stars.map(s => ((s._1._2, s._1._1), (s._2._2, s._2._1)))
 
     val stars = universeRaw.toList.zipWithIndex.map(a => (a._1, a._2.toLong)).flatMap { row =>
       row._1.split("").zipWithIndex.filter(_._1 == "#").map(space => (row._2, space._2.toLong)).toList
     }
     val initialOldNewStars = stars.map(a => (a, a))
-    val starsExpandedVerticallyRotated = expandUniverseInOneDimension(initialOldNewStars).map(s => ((s._1._2, s._1._1), (s._2._2, s._2._1)))
-    val starsExpanded = expandUniverseInOneDimension(starsExpandedVerticallyRotated).map(s => ((s._1._2, s._1._1), (s._2._2, s._2._1)))
-
+    val starsExpandedVerticallyRotated = rotateUniverse(expandUniverseInOneDimension(initialOldNewStars))
+    val starsExpanded = rotateUniverse(expandUniverseInOneDimension(starsExpandedVerticallyRotated))
     sumOfDistances(starsExpanded.map(_._2), 0)
   }
 }
